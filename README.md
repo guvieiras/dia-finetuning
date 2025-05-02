@@ -18,7 +18,7 @@ python -m dia.finetune \
 ```
 
 ```bash
-python -m dia.finetune_lora \
+python -m dia.finetune \
 	--local_ckpt "/home/alissonerdx/projects/dia-finetuning/checkpoints/10000_steps_epoch_1_AdrienB134portuguese-tts.pth"
 	--config config.json 
 	--csv_path "/home/alissonerdx/projects/dia-finetuning/podcast.csv"

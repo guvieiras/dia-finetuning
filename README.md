@@ -17,6 +17,22 @@ python -m dia.finetune \
   --output_dir ./checkpoints
 ```
 
+```bash
+python -m dia.finetune_lora \
+	--local_ckpt "/home/alissonerdx/projects/dia-finetuning/checkpoints/10000_steps_epoch_1_AdrienB134portuguese-tts.pth"
+	--config config.json 
+	--csv_path "/home/alissonerdx/projects/dia-finetuning/podcast.csv"
+	--audio_root "/home/alissonerdx/projects/dia-finetuning"
+	--run_name podcast
+	--output_dir ./checkpoints_2
+	--epochs 10
+	--learning_rate 0.00002
+```
+
+```bash
+python prepare-dataset.py [audio file here] --output_dir podcasts --csv_path podcast.csv --segment_length 30 --hf_token [HF token] --trim_start 60 --trim_end 60 --append_csv
+```
+
 ## Original readme
 
 <p align="center">

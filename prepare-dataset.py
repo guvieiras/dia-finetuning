@@ -192,13 +192,16 @@ def main():
                 with open(txt_file, 'w', encoding='utf-8') as f:
                     f.write(tr)
 
-        print(f"{os.path.basename(seg)} -> Transcription:\n{tr}\n")
+        print(f"{os.path.basename(seg)}")
+        print(f"-"*20)
+        print(f"Transcription:\n{tr}\n")
         row = [seg, tr]
         if args.include_original:
             row.append(original or '')
-            print(f"Original:\n{tr}\n")
+            print(f"Original:\n{original}\n")
         with open(args.csv_path, 'a', encoding='utf-8') as f:
             f.write('|'.join(row).replace('\n', ' ') + '\n')
+        print(f"-"*20)
 
     print(f"✅ All transcriptions saved incrementally to: {args.csv_path}")
 

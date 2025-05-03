@@ -39,6 +39,12 @@ or you can process a folder with already existing segments
 python prepare-dataset.py --csv_path podcast2.csv --append_csv --hf_token [HF token]  --from_segments Ieda_F014 --include_original
 ```
 
+Requirements to use prepare script:
+- Install pyannote.audio 3.1 with pip install pyannote.audio
+- Accept pyannote/segmentation-3.0 user conditions
+- Accept pyannote/speaker-diarization-3.1 user conditions
+- Create access token at hf.co/settings/tokens.
+
 ## Original readme
 
 <p align="center">

@@ -29,21 +29,81 @@ python -m dia.finetune \
 	--learning_rate 0.00002
 ```
 
-processing an audio file into segments and transcribing it
+# 🗣️ Whisper + Diarization Transcription Script
+
+This script allows you to automatically **transcribe and diarize** audio files using OpenAI Whisper and PyAnnote. It supports:
+- Segmenting long audio into chunks.
+- Speaker labeling with `[S1]`, `[S2]`, etc.
+- Using pre-segmented folders of `.wav` files.
+- Reading `.txt` transcripts (if they already exist).
+- Writing results incrementally to a CSV.
+- Optionally preserving or overwriting `.txt` files.
+
+## 🔧 Requirements
+
+Install the required packages:
 ```bash
-python prepare-dataset.py [audio file here] --output_dir podcasts --csv_path podcast.csv --append_csv --segment_length 30 --hf_token [HF token] --trim_start 60 --trim_end 60 
+pip install torch torchaudio transformers pyannote.audio librosa pandas tqdm
 ```
 
-or you can process a folder with already existing segments
+To use diarization, you must:
+- Install `pyannote.audio==3.1` via `pip install pyannote.audio`
+- Accept access conditions for:
+  - `pyannote/segmentation-3.0`
+  - `pyannote/speaker-diarization-3.1`
+- Create and use a Hugging Face access token from: https://hf.co/settings/tokens
+
+## 🚀 Usage Examples
+
+### 1. Process and segment a long audio file:
 ```bash
-python prepare-dataset.py --csv_path podcast2.csv --append_csv --hf_token [HF token]  --from_segments Ieda_F014 --include_original
+python prepare-dataset.py [audio file here] \
+  --output_dir podcasts \
+  --csv_path podcast.csv \
+  --append_csv \
+  --segment_length 30 \
+  --hf_token [HF token] \
+  --trim_start 60 \
+  --trim_end 60
 ```
 
-Requirements to use prepare script:
-- Install pyannote.audio 3.1 with pip install pyannote.audio
-- Accept pyannote/segmentation-3.0 user conditions
-- Accept pyannote/speaker-diarization-3.1 user conditions
-- Create access token at hf.co/settings/tokens.
+### 2. Process a folder of pre-segmented `.wav` files (non-recursive):
+```bash
+python prepare-dataset.py --csv_path podcast2.csv \
+  --append_csv \
+  --hf_token [HF token] \
+  --from_segments Ieda_F014 \
+  --include_original
+```
+
+### 3. Recursively transcribe `.wav` files in nested folders:
+```bash
+python prepare-dataset.py --from_segments path/to/main_folder \
+  --csv_path output.csv \
+  --hf_token [HF token]
+```
+
+## 🧠 Optional Flags
+
+| Flag                          | Description |
+|-------------------------------|-------------|
+| `--include_original`          | Adds the content of each `.txt` (if exists) to the CSV as `original_text` |
+| `--skip_existing`             | Skips `.wav` files that already have a `.txt` file |
+| `--add_diarization_to_existing` | Processes existing `.txt` files that lack `[Sx]` speaker tags and writes the updated diarized version to the CSV (original `.txt` is not modified unless `--overwrite_txt` is set) |
+| `--overwrite_txt`             | Allows overwriting `.txt` files with new diarized transcriptions |
+| `--append_csv`                | Appends to the existing CSV instead of overwriting |
+| `--trim_start`, `--trim_end`  | Trims seconds from the start/end of long audio files before segmenting |
+| `--segment_length`            | Sets segment duration in seconds (default: 30s) |
+
+## 📝 Output
+
+- A `.csv` file with one row per audio segment:
+  - `audio`: path to the segment
+  - `text`: diarized transcription
+  - `original_text`: original `.txt` content (if `--include_original` is set)
+
+- `.txt` files with the transcription will be created next to each `.wav` unless `--skip_existing` is used.
+
 
 ## Original readme
 

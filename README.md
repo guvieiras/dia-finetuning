@@ -20,17 +20,23 @@ python -m dia.finetune \
 ```bash
 python -m dia.finetune \
 	--local_ckpt "/home/alissonerdx/projects/dia-finetuning/checkpoints/10000_steps_epoch_1_AdrienB134portuguese-tts.pth"
-	--config config.json 
-	--csv_path "/home/alissonerdx/projects/dia-finetuning/podcast.csv"
-	--audio_root "/home/alissonerdx/projects/dia-finetuning"
-	--run_name podcast
-	--output_dir ./checkpoints_2
-	--epochs 10
+	--config config.json \
+	--csv_path "/home/alissonerdx/projects/dia-finetuning/podcast.csv" \
+	--audio_root "/home/alissonerdx/projects/dia-finetuning" \
+	--run_name podcast \
+	--output_dir ./checkpoints_2 \
+	--epochs 10 \
 	--learning_rate 0.00002
 ```
 
+processing an audio file into segments and transcribing it
 ```bash
-python prepare-dataset.py [audio file here] --output_dir podcasts --csv_path podcast.csv --segment_length 30 --hf_token [HF token] --trim_start 60 --trim_end 60 --append_csv
+python prepare-dataset.py [audio file here] --output_dir podcasts --csv_path podcast.csv --append_csv --segment_length 30 --hf_token [HF token] --trim_start 60 --trim_end 60 
+```
+
+or you can process a folder with already existing segments
+```bash
+python prepare-dataset.py --csv_path podcast2.csv --append_csv --hf_token [HF token]  --from_segments Ieda_F014 --include_original
 ```
 
 ## Original readme

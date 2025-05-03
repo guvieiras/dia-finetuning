@@ -3,6 +3,7 @@ import os
 import uuid
 import tempfile
 import warnings
+import glob
 
 import torch
 torch.set_num_threads(1)
@@ -99,10 +100,11 @@ def main():
     parser.add_argument('--trim_end', type=float, default=0.0, help='Trim end sec')
     parser.add_argument('--append_csv', action='store_true', help='Append CSV')
     parser.add_argument('--full_transcribe', action='store_true', help='Full then split')
-    parser.add_argument('--from_segments', help='Path to folder with pre-segmented audio files')
+    parser.add_argument('--from_segments', help='Path to folder with pre-segmented audio files (supports subfolders)')
     parser.add_argument('--include_original', action='store_true', help='Include original .txt transcription if exists')
     parser.add_argument('--skip_existing', action='store_true', help='Skip .wav files that already have .txt files')
     parser.add_argument('--add_diarization_to_existing', action='store_true', help='Add [Sx] tags to .txt files without them')
+    parser.add_argument('--overwrite_txt', action='store_true', help='Allow overwriting existing .txt files')
     args = parser.parse_args()
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -111,7 +113,7 @@ def main():
         'openai/whisper-large-v3', torch_dtype=torch.float16
     ).to(device)
     proc = AutoProcessor.from_pretrained('openai/whisper-large-v3')
-    proc.tokenizer.pad_token_id = proc.tokenizer.eos_token_id  # avoids tokenizer warning
+    proc.tokenizer.pad_token_id = proc.tokenizer.eos_token_id
     asr_pipe = hf_pipeline(
         'automatic-speech-recognition',
         model=model,
@@ -132,12 +134,8 @@ def main():
     ).to(device)
 
     if args.from_segments:
-        print(f"🔹 Processing pre-segmented folder: {args.from_segments}")
-        all_segments = [
-            os.path.join(args.from_segments, f)
-            for f in os.listdir(args.from_segments)
-            if f.endswith('.wav')
-        ]
+        print(f"🔹 Searching for segments in: {args.from_segments}")
+        all_segments = glob.glob(os.path.join(args.from_segments, '**', '*.wav'), recursive=True)
         seg_times = [(seg, None, None) for seg in sorted(all_segments)]
     else:
         if args.full_transcribe:
@@ -149,6 +147,7 @@ def main():
             tmp.close(); os.unlink(tmp.name)
             diar_full = diar_pipe(args.audio_path)
             full_turns = list(diar_full.itertracks(yield_label=True))
+
         print("🔹 Splitting audio...")
         segments = split_audio_fixed(
             args.audio_path, args.output_dir,
@@ -156,16 +155,23 @@ def main():
         )
         seg_times = [(seg, None, None) for seg in segments]
 
-    rows = []
-    print("🔹 Transcribing segments...")
+    print(f"🔹 {len(seg_times)} segments to process.")
+
+    mode = 'a' if args.append_csv and os.path.exists(args.csv_path) else 'w'
+    if mode == 'w':
+        with open(args.csv_path, 'w', encoding='utf-8') as f:
+            header = ['audio', 'text']
+            if args.include_original:
+                header.append('original_text')
+            f.write('|'.join(header) + '\n')
+
     for seg, st, en in tqdm(seg_times, desc='Segments'):
         base = os.path.splitext(seg)[0]
         txt_file = base + '.txt'
         original = None
-
-        has_txt = os.path.isfile(txt_file)
         tr = None
 
+        has_txt = os.path.isfile(txt_file)
         if has_txt:
             with open(txt_file, 'r', encoding='utf-8') as f:
                 original = f.read().strip()
@@ -174,39 +180,28 @@ def main():
             continue
 
         if args.add_diarization_to_existing and has_txt and not has_speaker_tags(original or ''):
-            print(f"🔄 Adding diarization to {os.path.basename(txt_file)}")
+            print(f"🔄 Adding diarization to {os.path.basename(txt_file)} (will not overwrite)")
             tr = process_segment(seg, asr_pipe, diar_pipe)
-            with open(txt_file, 'w', encoding='utf-8') as f:
-                f.write(tr)
+            if args.overwrite_txt:
+                with open(txt_file, 'w', encoding='utf-8') as f:
+                    f.write(tr)
 
         if tr is None:
             tr = process_segment(seg, asr_pipe, diar_pipe)
-            with open(txt_file, 'w', encoding='utf-8') as f:
-                f.write(tr)
+            if not has_txt or args.overwrite_txt:
+                with open(txt_file, 'w', encoding='utf-8') as f:
+                    f.write(tr)
 
         print(f"{os.path.basename(seg)} -> Transcription:\n{tr}\n")
-        row = {'audio': seg, 'text': tr}
+        row = [seg, tr]
         if args.include_original:
-            row['original_text'] = original or ''
-            print(f"Original: {original}\n")
-        rows.append(row)
+            row.append(original or '')
+            print(f"Original:\n{tr}\n")
+        with open(args.csv_path, 'a', encoding='utf-8') as f:
+            f.write('|'.join(row).replace('\n', ' ') + '\n')
 
-    cols = ['audio', 'text'] + (['original_text'] if args.include_original else [])
-    df = pd.DataFrame(rows, columns=cols)
-    mode = 'a' if args.append_csv and os.path.exists(args.csv_path) else 'w'
-    df.to_csv(args.csv_path, index=False, mode=mode, header=not args.append_csv, sep='|')
-    print(f"✅ CSV saved to '{args.csv_path}'")
+    print(f"✅ All transcriptions saved incrementally to: {args.csv_path}")
 
 if __name__ == '__main__':
     main()
 
-
-# **Instructions:**
-# 1. Install dependencies: `pip install torch torchaudio transformers pyannote.audio librosa tqdm`.
-# 2. Run:
-#    ```bash
-#    python prepare-data.py podcast.m4a --output_dir segments --csv_path resultado.csv --segment_length 30 --hf_token YOUR_HF_TOKEN
-#    ```
-# 3. Segments get random UUID names; CSV contains `audio_path` and `transcription` with `[S1]`, `[S2]` tags.
-
-# Let me know if you'd like further tweaks!```

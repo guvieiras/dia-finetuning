@@ -64,6 +64,9 @@ def clean_text(text: str) -> str:
 def has_speaker_tags(text: str) -> bool:
     return bool(re.search(r"\[S\d\]", text))
 
+def sanitize_csv_field(text: str) -> str:
+    return re.sub(r'\s+', ' ', text.replace('|', ' ').replace('\n', ' ').replace('\r', ' ')).strip()
+
 def process_segment(seg_path: str, asr_pipe, diar_pipe) -> str:
     diar = diar_pipe(seg_path)
     turns = list(diar.itertracks(yield_label=True))
@@ -195,16 +198,15 @@ def main():
         print(f"{os.path.basename(seg)}")
         print(f"-"*20)
         print(f"Transcription:\n{tr}\n")
-        row = [seg, tr]
+        row = [sanitize_csv_field(seg), sanitize_csv_field(tr)]
         if args.include_original:
-            row.append(original or '')
+            row.append(sanitize_csv_field(original or ''))
             print(f"Original:\n{original}\n")
         with open(args.csv_path, 'a', encoding='utf-8') as f:
-            f.write('|'.join(row).replace('\n', ' ') + '\n')
+            f.write('|'.join(row) + '\n')
         print(f"-"*20)
 
     print(f"✅ All transcriptions saved incrementally to: {args.csv_path}")
 
 if __name__ == '__main__':
     main()
-

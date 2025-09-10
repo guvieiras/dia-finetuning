@@ -129,7 +129,7 @@ class Dia:
             RuntimeError: If there is an error loading the checkpoint.
         """
         config_path = hf_hub_download(repo_id=model_name, filename="config.json")
-        checkpoint_path = hf_hub_download(repo_id=model_name, filename="dia-v0_1.pth")
+        checkpoint_path = hf_hub_download(repo_id=model_name, filename="Dia1.6-Portuguese-v1.pth")
         return cls.from_local(config_path, checkpoint_path, device)
 
     def _load_dac_model(self):
